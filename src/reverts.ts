@@ -4,7 +4,7 @@ import { getPrsInTimeWindow, PullRequest } from './pull-requests';
 
 const logger = debug('redox:reverts');
 
-const repos = ['redox-services', 'RedoxEngine', 'Alchemist'];
+const repos = ['redox-services', 'RedoxEngine', 'Alchemist', 'dashboard'];
 
 const today = new Date(new Date().setHours(0, 0, 0, 0));
 const oneMonthAgo = new Date(new Date(new Date().setMonth(today.getMonth() - 1)).setHours(0, 0,0,0));
