@@ -30,7 +30,19 @@ const questions: prompts.PromptObject[] = [
 
 const filterPrsToJustReverts = (prs: PullRequest[]) => {
   return prs.filter(pr => {
-    return pr.title.match(/.*revert.*/i) && !!pr.merged_at;
+    if (!pr.merged_at) {
+      return false;
+    }
+
+    if (pr.title.match(/.*revert.*/i)) {
+      return true;
+    }
+
+    if (pr.body && pr.body.match(/Reverts\s100health\/.*#[0-9]*/)) {
+      return true;
+    }
+
+    return false;
   });
 }
 

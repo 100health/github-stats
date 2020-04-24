@@ -24,8 +24,23 @@ export interface PullRequest {
   closed_at: Date;
   merged_at: Date;
   merge_commit_sha: string;
+  _links: Links;
 }
 
+interface Link {
+  href: string;
+}
+
+interface Links {
+  self: Link;
+  html: Link;
+  issue: Link;
+  comments: Link;
+  review_comments: Link;
+  review_comment: Link;
+  commits: Link;
+  statuses: Link;
+}
 interface User {
   login: string;
   id: number;
