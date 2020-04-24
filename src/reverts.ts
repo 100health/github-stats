@@ -42,6 +42,10 @@ const filterPrsToJustReverts = (prs: PullRequest[]) => {
       return true;
     }
 
+    if (pr.head && pr.head.ref.match(/revert\-[0-9]*/)) {
+      return true;
+    }
+
     return false;
   });
 }

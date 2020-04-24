@@ -24,7 +24,29 @@ export interface PullRequest {
   closed_at: Date;
   merged_at: Date;
   merge_commit_sha: string;
+  head: Branch;
+  base: Branch;
   _links: Links;
+}
+
+interface Branch {
+  label: string;
+  ref: string;
+  sha: string;
+  user: User;
+  repo: Repo;
+}
+
+interface Repo {
+  id: number;
+  node_id: string;
+  full_name: string;
+  private: boolean;
+  owner: User;
+  html_url: string;
+  description: string;
+  fork: boolean;
+  url: string;
 }
 
 interface Link {
