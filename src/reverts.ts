@@ -53,10 +53,12 @@ const filterPrsToJustReverts = (prs: PullRequest[]) => {
 const getReverts = async (startDate: Date, endDate: Date) => {
   let revertedPrs: PullRequest[] = [];
   for (const repo of repos) {
+    console.log(`Finding PRs in the 100health/${repo} repository...`);
     const allPrsInTimeWindow = await getPrsInTimeWindow(startDate, endDate, repo);
     logger(`Total of ${allPrsInTimeWindow.length} PRs in time window or ${repo} repository`);
     const reverts = filterPrsToJustReverts(allPrsInTimeWindow);
     revertedPrs = revertedPrs.concat(reverts);
+    console.log(`Done searching 100health/${repo}`);
   }
   
   return revertedPrs;
