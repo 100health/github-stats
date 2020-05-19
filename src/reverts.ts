@@ -1,53 +1,14 @@
 import * as debug from 'debug';
 import * as prompts from 'prompts';
-import { getPrsInTimeWindow, PullRequest } from './pull-requests';
+import { getPrsInTimeWindow, PullRequest, isRevertPR } from './pull-requests';
+import { dateRangeQuestions } from './prompts-helper';
 
 const logger = debug('redox:reverts');
 
 const repos = ['redox-services', 'RedoxEngine', 'Alchemist', 'dashboard'];
 
-const today = new Date(new Date().setHours(0, 0, 0, 0));
-const oneMonthAgo = new Date(new Date(new Date().setMonth(today.getMonth() - 1)).setHours(0, 0,0,0));
-
-const dateValidator = (date: Date) => date > today ? 'Not in the future' : true
-
-const questions: prompts.PromptObject[] = [
-  {
-    type: 'date',
-    name: 'startDate',
-    message: 'Start of time range?',
-    initial: oneMonthAgo,
-    validate: dateValidator
-  },
-  {
-    type: 'date',
-    name: 'endDate',
-    message: 'End of time range?',
-    initial: today,
-    validate: dateValidator
-  }
-];
-
 const filterPrsToJustReverts = (prs: PullRequest[]) => {
-  return prs.filter(pr => {
-    if (!pr.merged_at) {
-      return false;
-    }
-
-    if (pr.title.match(/.*revert.*/i)) {
-      return true;
-    }
-
-    if (pr.body && pr.body.match(/Reverts\s100health\/.*#[0-9]*/)) {
-      return true;
-    }
-
-    if (pr.head && pr.head.ref.match(/revert\-[0-9]*/)) {
-      return true;
-    }
-
-    return false;
-  });
+  return prs.filter(isRevertPR);
 }
 
 const getReverts = async (startDate: Date, endDate: Date) => {
@@ -75,7 +36,7 @@ const reportData = (prs: PullRequest[]) => {
 }
 
 const run = async () => {
-  const responses = await prompts(questions);
+  const responses = await prompts(dateRangeQuestions);
   const reverts = await getReverts(responses.startDate, responses.endDate);
   reportData(reverts);
 };

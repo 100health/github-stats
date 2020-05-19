@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "reverts": "ts-node src/reverts.ts",
+    "kpisByModule": "ts-node src/kpis-by-module.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

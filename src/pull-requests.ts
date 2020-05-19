@@ -69,6 +69,55 @@ interface User {
   node_id: 'string';
 }
 
+export interface PRCommit {
+  url: string;
+  sha: string;
+  node_id: string;
+  html_url: string;
+  comments_url: string;
+  commit: Commit;
+  author: User;
+  committer: User;
+  parents: {
+    url: string;
+    sha: string;
+  }[];
+}
+
+interface Commit {
+  url: string;
+  author: {
+    name: string;
+    email: string;
+    date: string;
+  },
+  committer: {
+    name: string;
+    email: string;
+    date: string;
+  },
+  message: string;
+  tree: {
+    url: string;
+    sha: string;
+  },
+  comment_count: number;
+  verification: Object;
+}
+
+export interface PRFile {
+  sha: string;
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+  blob_url: string;
+  raw_url: string;
+  contents_url: string;
+  patch: string;
+}
+
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const logger = debug('redox:pull-requests');
 
@@ -116,3 +165,27 @@ export const getPrsPage = async (repo: string, page: number): Promise<PullReques
   logger(`x-ratelimit-reset: ${headers['x-ratelimit-reset']} which is ${new Date(headers['x-ratelimit-reset'] * 1000)}`);
   return response.data;
 };
+
+export const getPRCommits = async (pr: PullRequest): Promise<PRCommit[]> => await (await ax.get(pr.commits_url)).data;
+export const getPRFiles = async (pr: PullRequest): Promise<PRFile[]> => await (await ax.get(`${pr.url}/files`)).data;
+// GET /repos/:owner/:repo/pulls/:pull_number/files
+
+export const isRevertPR = (pr: PullRequest): boolean => {
+  if (!pr.merged_at) {
+    return false;
+  }
+
+  if (pr.title.match(/.*revert.*/i)) {
+    return true;
+  }
+
+  if (pr.body && pr.body.match(/Reverts\s100health\/.*#[0-9]*/)) {
+    return true;
+  }
+
+  if (pr.head && pr.head.ref.match(/revert\-[0-9]*/)) {
+    return true;
+  }
+
+  return false;
+}
