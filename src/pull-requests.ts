@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosResponse, AxiosError } from 'axios';
 import * as debug from 'debug';
 
 export interface PullRequest {
@@ -133,6 +133,25 @@ ax.interceptors.request.use((config) => {
   return config;
 });
 
+const checkRateLimit = (response: AxiosResponse) => {
+  const headers = response.headers;
+  const remaining = headers['x-ratelimit-remaining'];
+  logger(`x-ratelimit-limit: ${headers['x-ratelimit-limit']}`);
+  logger(`x-ratelimit-remaining: ${remaining}`);
+  logger(`x-ratelimit-reset: ${headers['x-ratelimit-reset']} which is ${new Date(headers['x-ratelimit-reset'] * 1000)}`);
+  if (remaining < 1000) {
+    console.warn(`Only ${remaining} requests remaining before github's API limit is hit`);
+  }
+  return response;
+}
+
+const reportAPIError = (error: AxiosError) => {
+  console.log(error, JSON.stringify(error.response.data), JSON.stringify(error.response.headers));
+  return Promise.reject(error);
+}
+
+ax.interceptors.response.use(checkRateLimit, reportAPIError);
+
 export const getPrsInTimeWindow = async (afterTime: Date, beforeTime: Date, repo: string) => {
   let earliest = new Date(); // Initialize to right now
   let page = 1; // initialize page to page 1
@@ -159,10 +178,6 @@ export const getPrsInTimeWindow = async (afterTime: Date, beforeTime: Date, repo
 
 export const getPrsPage = async (repo: string, page: number): Promise<PullRequest[]> => {
   const response = await ax.get(`repos/100health/${repo}/pulls?state=closed&per_page=100&base=master&page=${page}&sort=created&direction=desc`);
-  const headers = response.headers;
-  logger(`x-ratelimit-limit: ${headers['x-ratelimit-limit']}`);
-  logger(`x-ratelimit-remaining: ${headers['x-ratelimit-remaining']}`);
-  logger(`x-ratelimit-reset: ${headers['x-ratelimit-reset']} which is ${new Date(headers['x-ratelimit-reset'] * 1000)}`);
   return response.data;
 };
 

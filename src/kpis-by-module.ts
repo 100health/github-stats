@@ -33,47 +33,77 @@ const getPrs = async (startDate: Date, endDate: Date) => {
   return prs.filter(pr => !!pr.merged_at);
 };
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function chunkArray<T>(array: T[], chunkSize: number = 10): Array<T[]> {
+  const chunkedArray = [];
+  let index = 0;
+  while (index < array.length) {
+    chunkedArray.push(array.slice(index, chunkSize + index));
+    index += chunkSize;
+  }
+  return chunkedArray;
+}
+
 const getCommits = async (prs: PullRequest[]): Promise<PullRequestCommitMap> => {
-  console.log(`Loading commit data...`);
-  const allCommits = await Promise.all(prs.map(getPRCommits));
+  console.log(`Loading commit data for ${prs.length} PRs`);
   const map: PullRequestCommitMap = new Map();
-  prs.forEach((pr, index) => map.set(pr.url, allCommits[index]));
+
+  const chunkedPRList = chunkArray(prs);
+
+  for (const chunk of chunkedPRList) {
+    const commits = await Promise.all(chunk.map(getPRCommits));
+    chunk.forEach((pr, index) => map.set(pr.url, commits[index]));
+    console.log(`Loaded commit data for ${chunk.length} PRs`);
+    await sleep(1000);
+  }
+
   console.log(`Done loading commit data...`);
   return map;
 };
 
 const getFiles = async (prs: PullRequest[]): Promise<PullRequestFileMap> => {
-  console.log(`Loading file data...`);
-  const allFiles = await Promise.all(prs.map(getPRFiles));
+  console.log(`Loading file data for ${prs.length}...`);
   const map: PullRequestFileMap = new Map();
-  prs.forEach((pr, index) => map.set(pr.url, allFiles[index]));
-  console.log(`Done loading commit data...`);
+  const chunkedPRList = chunkArray(prs);
+  for (const chunk of chunkedPRList) {
+    const files = await Promise.all(chunk.map(getPRFiles));
+    chunk.forEach((pr, index) => map.set(pr.url, files[index]));
+    console.log(`Loaded file data for ${chunk.length} PRs`);
+    await sleep(1000);
+  }
+  console.log(`Done loading file data...`);
   return map;
 };
 
 const sortPRCommits = (prCommits: PRCommit[]) => 
-  prCommits.sort((prCommitA, prCommitB) => +new Date(prCommitA.commit.committer.date) - +new Date(prCommitB.commit.committer.date));
+  prCommits.sort((prCommitA, prCommitB) => +new Date(prCommitA.commit.author.date) - +new Date(prCommitB.commit.author.date));
 
 const filterMasterMerges = (prCommits: PRCommit[]) => prCommits.filter(prCommit => !prCommit.commit.message.startsWith('Merge branch \'master\' '));
 
-const getFirstCommitDateTime = (prCommits: PRCommit[]) => prCommits[0].commit.committer.date;
-const getLastHumanCommitDateTime = (prCommits: PRCommit[]) => prCommits[prCommits.length - 1].commit.committer.date;
+const getFirstCommitDateTime = (prCommits: PRCommit[]) => prCommits[0].commit.author.date;
+
+const getLastHumanCommitDateTime = (prCommits: PRCommit[]) => prCommits[prCommits.length - 1].commit.author.date;
+
+const getLeadTime = (pr: PullRequest, commits: PRCommit[]) => 
+  (+new Date(pr.merged_at) - +new Date(getLastHumanCommitDateTime(commits))) / (1000 * 60 * 60); // In hours
+
+const getCycleTime = (commits: PRCommit[]) => 
+  (+new Date(getLastHumanCommitDateTime(commits)) - +new Date(getFirstCommitDateTime(commits))) / (1000 * 60 * 60); // In hours
 
 const getFieldsForPR = (prObj: PullRequestReportObject) => {
   const pr = prObj.pullRequest;
   const { html_url, title, created_at, merged_at } = pr;
   const commits = filterMasterMerges(sortPRCommits(prObj.commits));
-  const firstCommitDateTime = getFirstCommitDateTime(commits);
-  const lastCommitDateTime = getLastHumanCommitDateTime(commits);
   return [
     html_url,
-    title.replace(',',''), // Get rid of comma's since we're using a comma delimiter
+    title.replace(/,/g,''), // Get rid of comma's since we're using a comma delimiter
     created_at,
     merged_at,
     getFirstCommitDateTime(commits),
     getLastHumanCommitDateTime(commits),
-    +new Date(lastCommitDateTime) - +new Date(firstCommitDateTime), // Cycle Time
-    +new Date(pr.merged_at) - +new Date(lastCommitDateTime), // Lead Time
+    getCycleTime(commits),
+    getLeadTime(pr, commits),
     isRedoxEnginePR(pr),
     isRedoxEnginePR(pr) ? false : isServicesPR(prObj.files),
     isRedoxEnginePR(pr) ? false : isLibraryPR(prObj.files),
@@ -85,13 +115,23 @@ const reportData = (reportMap: PullRequestMap) => {
   console.log('\n\n');
   const columns = ['URL', 'Title', 'Created At', 'Merged At', 'Time of First Commit', 'Time of Last Commit', 'Cycle Time', 'Lead Time', 'RedoxEngine?', 'Service?', 'Library?', 'Package?'];
   console.log(columns.join(','));
-  reportMap.forEach(prObj => console.log(getFieldsForPR(prObj).join(',')));
+  reportMap.forEach(prObj => {
+    try {
+      console.log(getFieldsForPR(prObj).join(','))
+    } catch (err) {
+      console.error(`Error extracting data for PR ${prObj.pullRequest.html_url}`);
+      console.error(err.message, err.stack);
+    }
+  });
 };
 
 const run = async () => {
   const responses = await prompts(dateRangeQuestions);
   const prs = await getPrs(responses.startDate, responses.endDate);
-  const [ commitMap, fileMap ] = await Promise.all([getCommits(prs), getFiles(prs)]);
+  const [ commitMap, fileMap ] = await Promise.all([
+    getCommits(prs),
+    getFiles(prs)
+  ]);
   const reportMap: PullRequestMap = new Map();
   prs.forEach(pr =>
     reportMap.set(pr.url, {
