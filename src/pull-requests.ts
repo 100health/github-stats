@@ -1,5 +1,6 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
 import * as debug from 'debug';
+import * as URL from 'url';
 
 export interface PullRequest {
   url: string;
@@ -204,3 +205,15 @@ export const isRevertPR = (pr: PullRequest): boolean => {
 
   return false;
 }
+
+export const getSinglePR = async (htmlURL: string): Promise<PullRequest> => {
+  const url = convertHTMLUrlToAPIUrl(htmlURL);
+  return await (await ax.get(url)).data;
+};
+
+// Example HTML URL: https://github.com/octocat/Hello-World/pull/1347
+// Example API URL: https://api.github.com/repos/octocat/Hello-World/pulls/1347
+const convertHTMLUrlToAPIUrl = (htmlUrl) => {
+  const url = URL.parse(htmlUrl);
+  return `${url.protocol}//api.github.com/repos${url.pathname.replace('pull', 'pulls')}`;
+};
