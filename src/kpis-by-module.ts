@@ -80,6 +80,7 @@ const sortPRCommits = (prCommits: PRCommit[]) =>
   prCommits.sort((prCommitA, prCommitB) => +new Date(prCommitA.commit.author.date) - +new Date(prCommitB.commit.author.date));
 
 const filterMasterMerges = (prCommits: PRCommit[]) => prCommits.filter(prCommit => !prCommit.commit.message.startsWith('Merge branch \'master\' '));
+const filterLernaCommits = (prCommits: PRCommit[]) => prCommits.filter(prCommits => !prCommits.commit.message.startsWith('chore(release): lerna publish'));
 
 const getFirstCommitDateTime = (prCommits: PRCommit[]) => prCommits[0].commit.author.date;
 
@@ -94,7 +95,11 @@ const getCycleTime = (commits: PRCommit[]) =>
 const getFieldsForPR = (prObj: PullRequestReportObject) => {
   const pr = prObj.pullRequest;
   const { html_url, title, created_at, merged_at } = pr;
-  const commits = filterMasterMerges(sortPRCommits(prObj.commits));
+  const commits = filterMasterMerges(
+    filterLernaCommits(
+      sortPRCommits(prObj.commits)
+    )
+  );
   return [
     html_url,
     title.replace(/,/g,''), // Get rid of comma's since we're using a comma delimiter
