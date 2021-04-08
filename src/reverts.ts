@@ -5,7 +5,7 @@ import { dateRangeQuestions } from './prompts-helper';
 
 const logger = debug('redox:reverts');
 
-const repos = ['redox-services', 'RedoxEngine', 'Alchemist'];
+const repos = ['redox-services'];
 
 const filterPrsToJustReverts = (prs: PullRequest[]) => {
   return prs.filter(isRevertPR);

@@ -5,7 +5,7 @@ import { dateRangeQuestions } from './prompts-helper';
 
 const logger = debug('redox:kpisByModule');
 
-const repos = ['redox-services', 'RedoxEngine'];
+const repos = ['redox-services'];
 
 interface PullRequestReportObject {
   pullRequest: PullRequest;
